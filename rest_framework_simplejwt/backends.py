@@ -1,18 +1,32 @@
+import json
+from datetime import timedelta
+from typing import Optional, Type, Union
+
 import jwt
 from django.utils.translation import gettext_lazy as _
-from jwt import InvalidAlgorithmError, InvalidTokenError, PyJWKClient, algorithms
+from jwt import InvalidAlgorithmError, InvalidTokenError, algorithms
 
 from .exceptions import TokenBackendError
 from .utils import format_lazy
 
-ALLOWED_ALGORITHMS = (
+try:
+    from jwt import PyJWKClient
+
+    JWK_CLIENT_AVAILABLE = True
+except ImportError:
+    JWK_CLIENT_AVAILABLE = False
+
+ALLOWED_ALGORITHMS = {
     "HS256",
     "HS384",
     "HS512",
     "RS256",
     "RS384",
     "RS512",
-)
+    "ES256",
+    "ES384",
+    "ES512",
+}
 
 
 class TokenBackend:
@@ -24,22 +38,24 @@ class TokenBackend:
         audience=None,
         issuer=None,
         jwk_url: str = None,
-        leeway=0,
+        leeway: Union[float, int, timedelta] = None,
+        json_encoder: Optional[Type[json.JSONEncoder]] = None,
     ):
         self._validate_algorithm(algorithm)
 
         self.algorithm = algorithm
         self.signing_key = signing_key
+        self.verifying_key = verifying_key
         self.audience = audience
         self.issuer = issuer
 
-        self.jwks_client = PyJWKClient(jwk_url) if jwk_url else None
-        self.leeway = leeway
-
-        if algorithm.startswith("HS"):
-            self.verifying_key = signing_key
+        if JWK_CLIENT_AVAILABLE:
+            self.jwks_client = PyJWKClient(jwk_url) if jwk_url else None
         else:
-            self.verifying_key = verifying_key
+            self.jwks_client = None
+
+        self.leeway = leeway
+        self.json_encoder = json_encoder
 
     def _validate_algorithm(self, algorithm):
         """
@@ -55,6 +71,23 @@ class TokenBackend:
             raise TokenBackendError(
                 format_lazy(
                     _("You must have cryptography installed to use {}."), algorithm
+                )
+            )
+
+    def get_leeway(self) -> timedelta:
+        if self.leeway is None:
+            return timedelta(seconds=0)
+        elif isinstance(self.leeway, (int, float)):
+            return timedelta(seconds=self.leeway)
+        elif isinstance(self.leeway, timedelta):
+            return self.leeway
+        else:
+            raise TokenBackendError(
+                format_lazy(
+                    _(
+                        "Unrecognized type '{}', 'leeway' must be of type int, float or timedelta."
+                    ),
+                    type(self.leeway),
                 )
             )
 
@@ -77,7 +110,12 @@ class TokenBackend:
         if self.issuer is not None:
             jwt_payload["iss"] = self.issuer
 
-        token = jwt.encode(jwt_payload, self.signing_key, algorithm=self.algorithm)
+        token = jwt.encode(
+            jwt_payload,
+            self.signing_key,
+            algorithm=self.algorithm,
+            json_encoder=self.json_encoder,
+        )
         if isinstance(token, bytes):
             # For PyJWT <= 1.7.1
             return token.decode("utf-8")
@@ -99,7 +137,7 @@ class TokenBackend:
                 algorithms=[self.algorithm],
                 audience=self.audience,
                 issuer=self.issuer,
-                leeway=self.leeway,
+                leeway=self.get_leeway(),
                 options={
                     "verify_aud": self.audience is not None,
                     "verify_signature": verify,

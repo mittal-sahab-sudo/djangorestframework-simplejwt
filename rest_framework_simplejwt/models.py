@@ -9,9 +9,9 @@ from .settings import api_settings
 class TokenUser:
     """
     A dummy user class modeled after django.contrib.auth.models.AnonymousUser.
-    Used in conjunction with the `JWTTokenUserAuthentication` backend to
+    Used in conjunction with the `JWTStatelessUserAuthentication` backend to
     implement single sign-on functionality across services which share the same
-    secret key.  `JWTTokenUserAuthentication` will return an instance of this
+    secret key.  `JWTStatelessUserAuthentication` will return an instance of this
     class instead of a `User` model instance.  Instances of this class act as
     stateless user objects which are backed by validated tokens.
     """
@@ -103,3 +103,7 @@ class TokenUser:
 
     def get_username(self):
         return self.username
+
+    def __getattr__(self, attr):
+        """This acts as a backup attribute getter for custom claims defined in Token serializers."""
+        return self.token.get(attr, None)

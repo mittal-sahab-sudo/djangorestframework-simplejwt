@@ -11,7 +11,6 @@ Some of Simple JWT's behavior can be customized through settings variables in
   # Django project settings.py
 
   from datetime import timedelta
-  from django.conf import settings
   ...
 
   SIMPLE_JWT = {
@@ -22,7 +21,7 @@ Some of Simple JWT's behavior can be customized through settings variables in
       'UPDATE_LAST_LOGIN': False,
 
       'ALGORITHM': 'HS256',
-      'SIGNING_KEY': settings.SECRET_KEY,
+      'SIGNING_KEY': SECRET_KEY,
       'VERIFYING_KEY': None,
       'AUDIENCE': None,
       'ISSUER': None,
@@ -240,7 +239,7 @@ store such a value.
 --------------------
 
 A stateless user object which is backed by a validated token. Used only for
-the experimental JWTTokenUserAuthentication authentication backend. The value
+the JWTStatelessUserAuthentication authentication backend. The value
 is a dotted path to your subclass of ``rest_framework_simplejwt.models.TokenUser``,
 which also is the default.
 

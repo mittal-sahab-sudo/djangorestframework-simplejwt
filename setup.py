@@ -54,7 +54,7 @@ setup(
     install_requires=[
         "django",
         "djangorestframework",
-        "pyjwt>=2,<3",
+        "pyjwt>=1.7.1,<3",
     ],
     python_requires=">=3.7",
     extras_require=extras_require,
@@ -66,8 +66,8 @@ setup(
         "Environment :: Web Environment",
         "Framework :: Django",
         "Framework :: Django :: 2.2",
-        "Framework :: Django :: 3.1",
         "Framework :: Django :: 3.2",
+        "Framework :: Django :: 4.0",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",

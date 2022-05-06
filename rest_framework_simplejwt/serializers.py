@@ -24,6 +24,7 @@ class PasswordField(serializers.CharField):
 
 class TokenObtainSerializer(serializers.Serializer):
     username_field = get_user_model().USERNAME_FIELD
+    token_class = None
 
     default_error_messages = {
         "no_active_account": _("Invalid login credentials.")
@@ -57,15 +58,11 @@ class TokenObtainSerializer(serializers.Serializer):
 
     @classmethod
     def get_token(cls, user):
-        raise NotImplementedError(
-            "Must implement `get_token` method for `TokenObtainSerializer` subclasses"
-        )
+        return cls.token_class.for_user(user)
 
 
 class TokenObtainPairSerializer(TokenObtainSerializer):
-    @classmethod
-    def get_token(cls, user):
-        return RefreshToken.for_user(user)
+    token_class = RefreshToken
 
     def validate(self, attrs):
         data = super().validate(attrs)
@@ -87,9 +84,7 @@ class TokenObtainPairSerializer(TokenObtainSerializer):
 
 
 class TokenObtainSlidingSerializer(TokenObtainSerializer):
-    @classmethod
-    def get_token(cls, user):
-        return SlidingToken.for_user(user)
+    token_class = SlidingToken
 
     def validate(self, attrs):
         data = super().validate(attrs)
@@ -107,9 +102,10 @@ class TokenObtainSlidingSerializer(TokenObtainSerializer):
 class TokenRefreshSerializer(serializers.Serializer):
     refresh = serializers.CharField(error_messages={'400': 'Please login again.'})
     access = serializers.CharField(read_only=True)
+    token_class = RefreshToken
 
     def validate(self, attrs):
-        refresh = RefreshToken(attrs["refresh"])
+        refresh = self.token_class(attrs["refresh"])
 
         data = {"access": str(refresh.access_token)}
 
@@ -134,9 +130,10 @@ class TokenRefreshSerializer(serializers.Serializer):
 
 class TokenRefreshSlidingSerializer(serializers.Serializer):
     token = serializers.CharField()
+    token_class = SlidingToken
 
     def validate(self, attrs):
-        token = SlidingToken(attrs["token"])
+        token = self.token_class(attrs["token"])
 
         # Check that the timestamp in the "refresh_exp" claim has not
         # passed
@@ -168,9 +165,10 @@ class TokenVerifySerializer(serializers.Serializer):
 
 class TokenBlacklistSerializer(serializers.Serializer):
     refresh = serializers.CharField()
+    token_class = RefreshToken
 
     def validate(self, attrs):
-        refresh = RefreshToken(attrs["refresh"])
+        refresh = self.token_class(attrs["refresh"])
         try:
             refresh.blacklist()
         except AttributeError:
