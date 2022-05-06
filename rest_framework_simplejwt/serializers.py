@@ -26,7 +26,7 @@ class TokenObtainSerializer(serializers.Serializer):
     username_field = get_user_model().USERNAME_FIELD
 
     default_error_messages = {
-        "no_active_account": _("No active account found with the given credentials")
+        "no_active_account": _("Invalid login credentials.")
     }
 
     def __init__(self, *args, **kwargs):
@@ -75,6 +75,11 @@ class TokenObtainPairSerializer(TokenObtainSerializer):
         data["refresh"] = str(refresh)
         data["access"] = str(refresh.access_token)
 
+        data['first_name'] = self.user.first_name
+        data['last_name'] = self.user.last_name
+        data['email'] = self.user.email
+        data['isVerified'] = self.user.isVerified
+        
         if api_settings.UPDATE_LAST_LOGIN:
             update_last_login(None, self.user)
 
@@ -100,7 +105,7 @@ class TokenObtainSlidingSerializer(TokenObtainSerializer):
 
 
 class TokenRefreshSerializer(serializers.Serializer):
-    refresh = serializers.CharField()
+    refresh = serializers.CharField(error_messages={'400': 'Please login again.'})
     access = serializers.CharField(read_only=True)
 
     def validate(self, attrs):
